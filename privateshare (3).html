@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PrivateShare — Partage d'écran P2P</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0d0d10;--surface:#16161a;--surface2:#1e1e24;
+    --border:rgba(255,255,255,0.07);--border-h:rgba(255,255,255,0.14);
+    --accent:#7c6af7;--accent-dim:rgba(124,106,247,0.15);--accent-glow:rgba(124,106,247,0.3);
+    --green:#22c55e;--green-dim:rgba(34,197,94,0.12);
+    --yellow:#f59e0b;--red:#ef4444;
+    --text:#f0f0f4;--text2:#9090a0;--text3:#5a5a6a;
+    --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
+    --r:10px;--rl:14px;
+  }
+  html{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  body{min-height:100vh}
+  .shell{max-width:960px;margin:0 auto;padding:2rem 1.5rem 4rem}
+
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand-icon{width:40px;height:40px;border-radius:10px;background:var(--accent-dim);border:1px solid var(--accent-glow);display:flex;align-items:center;justify-content:center}
+  .brand-icon svg{width:22px;height:22px;stroke:var(--accent);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .brand-name{font-size:17px;font-weight:600;letter-spacing:-0.02em}
+  .brand-name span{color:var(--accent)}
+  .privacy-pill{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--green);background:var(--green-dim);border:1px solid rgba(34,197,94,0.2);border-radius:99px;padding:4px 12px}
+  .privacy-pill svg{width:13px;height:13px;stroke:var(--green);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  .info-banner{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:12px 16px;display:flex;gap:10px;align-items:flex-start;margin-bottom:1.5rem}
+  .info-banner svg{width:16px;height:16px;stroke:var(--accent);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;margin-top:3px}
+  .info-banner p{font-size:13px;color:var(--text2);line-height:1.6}
+  .info-banner strong{color:var(--text);font-weight:500}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+  @media(max-width:640px){.grid2{grid-template-columns:1fr}}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:1.25rem}
+  .card-header{display:flex;align-items:center;gap:8px;margin-bottom:1rem}
+  .step-num{width:22px;height:22px;border-radius:50%;background:var(--accent-dim);border:1px solid var(--accent-glow);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--accent);flex-shrink:0}
+  .card-title{font-size:13px;font-weight:500;color:var(--text2);letter-spacing:.03em;text-transform:uppercase}
+
+  .tabs{display:flex;background:var(--surface2);border-radius:8px;padding:3px;margin-bottom:1rem;gap:3px}
+  .tab{flex:1;padding:7px 10px;border-radius:6px;border:none;background:transparent;color:var(--text2);font-size:13px;font-family:var(--sans);cursor:pointer;transition:all .15s}
+  .tab.active{background:var(--accent);color:#fff;font-weight:500}
+  .tab:not(.active):hover{background:rgba(255,255,255,0.05);color:var(--text)}
+
+  .section{display:none}.section.on{display:block}
+  .lbl{font-size:12px;color:var(--text3);margin-bottom:6px}
+  textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:11px;padding:10px;resize:vertical;min-height:64px;transition:border .15s;line-height:1.5}
+  textarea:focus{outline:none;border-color:var(--accent)}
+  textarea::placeholder{color:var(--text3)}
+
+  .code-out{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);font-family:var(--mono);font-size:10.5px;padding:10px;min-height:64px;max-height:86px;overflow-y:auto;word-break:break-all;line-height:1.5;display:flex;align-items:center;justify-content:center;color:var(--text3)}
+  .code-out.has-data{color:var(--text2);justify-content:flex-start;align-items:flex-start}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 14px;border-radius:var(--r);border:1px solid var(--border);background:transparent;color:var(--text);font-size:13px;font-family:var(--sans);cursor:pointer;transition:all .15s;white-space:nowrap}
+  .btn:hover{background:var(--surface2);border-color:var(--border-h)}
+  .btn:active{transform:scale(.97)}
+  .btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+  .btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+  .btn-accent{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500}
+  .btn-accent:hover{background:#6b59e8;border-color:#6b59e8}
+  .btn-full{width:100%}
+  .btn-danger{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:var(--red)}
+  .btn-danger:hover{background:rgba(239,68,68,.18)}
+  .btn-sm{height:28px;padding:0 10px;font-size:12px}
+  .row{display:flex;gap:8px;align-items:center}
+  .spacer{flex:1}
+  .mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}
+  .divider{height:1px;background:var(--border);margin:.9rem 0}
+
+  /* Quality selector */
+  .quality-bar{display:flex;gap:6px;margin-bottom:12px}
+  .q-btn{flex:1;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:12px;font-family:var(--sans);cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px}
+  .q-btn:hover{border-color:var(--border-h);color:var(--text)}
+  .q-btn.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);font-weight:500}
+  .q-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  /* Stats */
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem}
+  .stat-box{background:var(--surface2);border-radius:8px;padding:9px 12px}
+  .stat-lbl{font-size:11px;color:var(--text3);margin-bottom:2px}
+  .stat-val{font-size:13px;font-weight:500;color:var(--text);font-family:var(--mono)}
+  .stat-val.ok{color:var(--green)}.stat-val.warn{color:var(--yellow)}.stat-val.err{color:var(--red)}
+
+  .status-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px 12px;background:var(--surface2);border-radius:8px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--text3);flex-shrink:0}
+  .dot.green{background:var(--green);box-shadow:0 0 6px var(--green)}
+  .dot.yellow{background:var(--yellow);animation:blink 1s infinite}
+  .dot.red{background:var(--red)}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+  #status-text{font-size:13px;color:var(--text2)}
+
+  /* Bitrate bar */
+  .bw-bar-wrap{height:4px;background:var(--surface2);border-radius:99px;margin-top:6px;overflow:hidden}
+  .bw-bar{height:100%;border-radius:99px;background:var(--green);width:0%;transition:width .5s,background .5s}
+
+  /* Video */
+  .video-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:640px){.video-grid{grid-template-columns:1fr}}
+  .video-col{display:flex;flex-direction:column;gap:10px}
+  .video-label-row{display:flex;align-items:center;justify-content:space-between}
+  .video-label-row span{font-size:12px;color:var(--text3)}
+  .vbadge{font-size:11px;padding:2px 8px;border-radius:99px}
+  .badge-local{background:rgba(124,106,247,.15);color:var(--accent)}
+  .badge-remote{background:rgba(34,197,94,.1);color:var(--green)}
+  .video-wrap{background:#08080c;border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;aspect-ratio:16/9;position:relative}
+  .video-wrap video{width:100%;height:100%;object-fit:contain;display:block}
+  .video-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text3)}
+  .video-empty svg{width:36px;height:36px;stroke:var(--text3);fill:none;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+  .video-empty p{font-size:12px}
+  .video-ctrl{display:flex;gap:8px;flex-wrap:wrap}
+  .vid-overlay{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.55);border-radius:6px;padding:3px 8px;font-size:11px;font-family:var(--mono);color:rgba(255,255,255,.7);display:none}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--surface2);border:1px solid var(--border-h);color:var(--text);font-size:13px;padding:9px 18px;border-radius:99px;opacity:0;transition:all .25s;pointer-events:none;z-index:9999;white-space:nowrap}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border-h);border-radius:99px}
+  .diag-panel{background:var(--surface);border:1px solid rgba(239,68,68,.3);border-radius:var(--rl);padding:14px 16px;display:none;flex-direction:column;gap:8px;margin-bottom:1.5rem}
+  .diag-title{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<header>
+  <div class="brand">
+    <div class="brand-icon">
+      <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+    </div>
+    <div class="brand-name">Private<span>Share</span></div>
+  </div>
+  <div class="privacy-pill">
+    <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    Connexion P2P chiffrée · aucun serveur vidéo
+  </div>
+</header>
+
+<div class="diag-panel" id="diag-panel">
+  <div class="diag-title">⚠️ Diagnostic de compatibilité</div>
+</div>
+
+<div class="info-banner">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+  <p>Flux vidéo <strong>direct entre navigateurs</strong> (WebRTC DTLS/SRTP). Aucun serveur ne voit votre écran. Partagez cette page — aucune installation requise.</p>
+</div>
+
+<div class="grid2">
+
+  <!-- Connexion -->
+  <div class="card">
+    <div class="card-header"><div class="step-num">1</div><div class="card-title">Connexion</div></div>
+
+    <div class="tabs">
+      <button class="tab active" id="tab-host" onclick="switchRole('host')">Je partage</button>
+      <button class="tab" id="tab-guest" onclick="switchRole('guest')">Je regarde</button>
+    </div>
+
+    <!-- HOST -->
+    <div class="section on" id="sec-host">
+      <div class="lbl">Qualité du partage</div>
+      <div class="quality-bar">
+        <button class="q-btn" id="q-smooth" onclick="setQuality('smooth')">
+          <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Fluide
+        </button>
+        <button class="q-btn active" id="q-hd" onclick="setQuality('hd')">
+          <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M8 12h8M12 8v8"/></svg>HD
+        </button>
+        <button class="q-btn" id="q-ultra" onclick="setQuality('ultra')">
+          <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Ultra
+        </button>
+      </div>
+
+      <button class="btn btn-accent btn-full" onclick="createOffer()" id="btn-create-offer">
+        <svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        Créer une offre &amp; partager l'écran
+      </button>
+
+      <div id="ice-progress-host" style="display:none;font-size:12px;color:var(--yellow);margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;" id="ice-progress"></div>
+
+      <div class="mt12 row">
+        <div class="spacer"></div>
+        <button class="btn btn-sm" id="btn-copy-offer" onclick="copyCode('offer-out','btn-copy-offer')" style="display:none">
+          <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copier
+        </button>
+      </div>
+      <div class="code-out mt8" id="offer-out">En attente de création…</div>
+
+      <div class="divider"></div>
+      <div class="lbl">Code de réponse reçu</div>
+      <textarea id="answer-in" placeholder="Collez ici le code de votre correspondant…" rows="3"></textarea>
+      <button class="btn btn-accent btn-full mt8" onclick="receiveAnswer()">
+        <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        Établir la connexion
+      </button>
+    </div>
+
+    <!-- GUEST -->
+    <div class="section" id="sec-guest">
+      <div class="lbl">Code d'offre reçu de l'hôte</div>
+      <textarea id="offer-in" placeholder="Collez ici le code de l'hôte…" rows="3"></textarea>
+      <button class="btn btn-accent btn-full mt8" onclick="createAnswer()">
+        <svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        Générer une réponse
+      </button>
+      <div id="ice-progress-guest" style="display:none;font-size:12px;color:var(--yellow);margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;"></div>
+
+      <div class="mt12 row">
+        <span class="lbl" style="margin:0">Code à renvoyer à l'hôte</span>
+        <div class="spacer"></div>
+        <button class="btn btn-sm" id="btn-copy-answer" onclick="copyCode('answer-out','btn-copy-answer')" style="display:none">
+          <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copier
+        </button>
+      </div>
+      <div class="code-out mt8" id="answer-out">En attente…</div>
+    </div>
+  </div>
+
+  <!-- Statut -->
+  <div class="card">
+    <div class="card-header"><div class="step-num">2</div><div class="card-title">Statut &amp; performances</div></div>
+
+    <div class="status-row">
+      <div class="dot" id="dot"></div>
+      <span id="status-text">Déconnecté</span>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-box">
+        <div class="stat-lbl">Rôle</div>
+        <div class="stat-val" id="info-role">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-lbl">Qualité</div>
+        <div class="stat-val" id="info-quality">HD</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-lbl">Résolution</div>
+        <div class="stat-val" id="info-res">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-lbl">FPS</div>
+        <div class="stat-val" id="info-fps">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-lbl">Débit vidéo</div>
+        <div class="stat-val" id="info-bw">—</div>
+        <div class="bw-bar-wrap"><div class="bw-bar" id="bw-bar"></div></div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-lbl">Perte paquets</div>
+        <div class="stat-val" id="info-loss">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-lbl">Codec</div>
+        <div class="stat-val" id="info-codec">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-lbl">Chiffrement</div>
+        <div class="stat-val ok">DTLS/SRTP</div>
+      </div>
+    </div>
+
+    <button class="btn btn-danger btn-full" id="btn-disc" onclick="disconnect()" disabled>
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      Terminer la session
+    </button>
+  </div>
+</div>
+
+<!-- Vidéo -->
+<div class="card">
+  <div class="card-header"><div class="step-num">3</div><div class="card-title">Flux vidéo</div></div>
+  <div class="video-grid">
+    <div class="video-col">
+      <div class="video-label-row">
+        <span>Votre écran</span>
+        <span class="vbadge badge-local">Local</span>
+      </div>
+      <div class="video-wrap">
+        <video id="local-vid" autoplay muted playsinline></video>
+        <div class="video-empty" id="local-empty">
+          <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/></svg>
+          <p>Pas encore partagé</p>
+        </div>
+        <div class="vid-overlay" id="local-info"></div>
+      </div>
+      <div class="video-ctrl">
+        <button class="btn btn-accent" id="btn-share" onclick="startShare()">
+          <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/></svg>
+          Partager l'écran
+        </button>
+        <button class="btn" id="btn-stop" onclick="stopShare()" disabled>
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          Arrêter
+        </button>
+      </div>
+    </div>
+    <div class="video-col">
+      <div class="video-label-row">
+        <span>Écran distant</span>
+        <span class="vbadge badge-remote">Distant</span>
+      </div>
+      <div class="video-wrap">
+        <video id="remote-vid" autoplay playsinline></video>
+        <div class="video-empty" id="remote-empty">
+          <svg viewBox="0 0 24 24"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+          <p>En attente de connexion</p>
+        </div>
+        <div class="vid-overlay" id="remote-info"></div>
+      </div>
+      <div class="video-ctrl">
+        <button class="btn" onclick="goFullscreen()">
+          <svg viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          Plein écran
+        </button>
+        <button class="btn" onclick="toggleRemoteInfo()">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Infos
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════
+   Config qualité
+   ══════════════════════════════════════════ */
+const QUALITY = {
+  smooth: {
+    label:'Fluide',
+    video:{ width:{ideal:1280,max:1920}, height:{ideal:720,max:1080}, frameRate:{ideal:30,max:30}, cursor:'always' },
+    bitrate: 2_500_000,   // 2.5 Mbps
+    maxBitrate: 4_000_000
+  },
+  hd: {
+    label:'HD 1080p',
+    video:{ width:{ideal:1920,max:2560}, height:{ideal:1080,max:1440}, frameRate:{ideal:60,max:60}, cursor:'always' },
+    bitrate: 6_000_000,   // 6 Mbps
+    maxBitrate: 10_000_000
+  },
+  ultra: {
+    label:'Ultra 4K',
+    video:{ width:{ideal:3840,max:3840}, height:{ideal:2160,max:2160}, frameRate:{ideal:60,max:60}, cursor:'always' },
+    bitrate: 15_000_000,  // 15 Mbps
+    maxBitrate: 25_000_000
+  }
+};
+
+let pc = null, localStream = null, role = 'host', statsTimer = null;
+let currentQuality = 'hd';
+let showRemoteInfo = false;
+let lastBytesReceived = 0, lastBytesSent = 0, lastStatsTime = 0;
+
+const ICE = {
+  iceServers: [
+    { urls:'stun:stun.l.google.com:19302' },
+    { urls:'stun:stun1.l.google.com:19302' },
+    { urls:'stun:stun2.l.google.com:19302' },
+    { urls:'stun:stun3.l.google.com:19302' }
+  ],
+  iceCandidatePoolSize: 10
+};
+
+/* ── Qualité ── */
+function setQuality(q) {
+  currentQuality = q;
+  ['smooth','hd','ultra'].forEach(k => document.getElementById('q-'+k).classList.toggle('active', k===q));
+  document.getElementById('info-quality').textContent = QUALITY[q].label;
+  // Si déjà en train de partager, renegocier
+  if (localStream && pc) applyEncoderParams();
+  toast('Qualité : ' + QUALITY[q].label);
+}
+
+/* ── PeerConnection ── */
+function makePC() {
+  if (pc) pc.close();
+  pc = new RTCPeerConnection(ICE);
+
+  pc.ontrack = e => {
+    const v = document.getElementById('remote-vid');
+    v.srcObject = e.streams[0];
+    document.getElementById('remote-empty').style.display = 'none';
+    setStatus('green','Flux reçu — connexion active');
+    startStats();
+    document.getElementById('remote-info').style.display = showRemoteInfo ? 'block' : 'none';
+  };
+
+  pc.oniceconnectionstatechange = () => {
+    const s = pc.iceConnectionState;
+    if (s==='connected'||s==='completed') {
+      setStatus('green','Connecté');
+      document.getElementById('btn-disc').disabled = false;
+      if (localStream) applyEncoderParams();
+    } else if (s==='checking') {
+      setStatus('yellow','Connexion en cours…');
+    } else if (['disconnected','closed','failed'].includes(s)) {
+      setStatus('red','Déconnecté');
+      document.getElementById('btn-disc').disabled = true;
+    }
+  };
+}
+
+/* ── Appliquer paramètres encodeur ── */
+async function applyEncoderParams() {
+  if (!pc) return;
+  const q = QUALITY[currentQuality];
+  const senders = pc.getSenders().filter(s => s.track && s.track.kind === 'video');
+  for (const sender of senders) {
+    try {
+      const params = sender.getParameters();
+      if (!params.encodings || params.encodings.length === 0) {
+        params.encodings = [{}];
+      }
+      params.encodings[0].maxBitrate = q.maxBitrate;
+      params.encodings[0].minBitrate = q.bitrate;
+      // Priorité haute pour le partage d'écran
+      params.encodings[0].networkPriority = 'high';
+      params.encodings[0].priority = 'high';
+      await sender.setParameters(params);
+    } catch(e) { /* certains navigateurs ne supportent pas tout */ }
+  }
+}
+
+/* ── Détection navigateur / OS ── */
+function detectEnv() {
+  const ua = navigator.userAgent;
+  const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
+  const isFirefox = /Firefox/.test(ua);
+  const isChrome = /Chrome/.test(ua) || /Chromium/.test(ua);
+  const isMac = /Macintosh|Mac OS X/.test(ua);
+  const isHTTPS = location.protocol === 'https:' || location.hostname === 'localhost';
+  return { isSafari, isFirefox, isChrome, isMac, isHTTPS };
+}
+
+function checkCompatibility() {
+  const env = detectEnv();
+  const diagEl = document.getElementById('diag-panel');
+  const lines = [];
+  let hasError = false;
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+    lines.push({ ok:false, msg:'getDisplayMedia non supporté dans ce navigateur' });
+    hasError = true;
+  } else {
+    lines.push({ ok:true, msg:'API getDisplayMedia disponible' });
+  }
+
+  if (!env.isHTTPS) {
+    lines.push({ ok:false, msg:'Page servie en HTTP — WebRTC nécessite HTTPS ou localhost. Ouvrez via un hébergeur (Netlify, GitHub Pages) ou en localhost.' });
+    hasError = true;
+  } else {
+    lines.push({ ok:true, msg:'Contexte sécurisé (HTTPS / localhost)' });
+  }
+
+  if (env.isSafari) {
+    lines.push({ ok:false, msg:'Safari détecté — le partage d\'écran nécessite Safari 13+ et peut être limité. Recommandé : Chrome ou Firefox.' });
+    hasError = true;
+  } else if (env.isChrome) {
+    lines.push({ ok:true, msg:'Chrome détecté — compatibilité optimale' });
+  } else if (env.isFirefox) {
+    lines.push({ ok:true, msg:'Firefox détecté — compatible' });
+  }
+
+  if (env.isMac) {
+    lines.push({ ok:null, msg:'Mac détecté — vérifiez : Réglages système → Confidentialité → Enregistrement d\'écran → cochez votre navigateur' });
+  }
+
+  if (hasError || lines.some(l=>l.ok===null)) {
+    diagEl.style.display = 'flex';
+    diagEl.innerHTML = lines.map(l =>
+      `<div style="display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5">
+        <span style="flex-shrink:0;margin-top:1px">${l.ok===true?'✅':l.ok===false?'❌':'⚠️'}</span>
+        <span style="color:${l.ok===false?'var(--red)':l.ok===null?'var(--yellow)':'var(--green)'}">${l.msg}</span>
+      </div>`
+    ).join('');
+  }
+  return !hasError;
+}
+
+/* ── Capture écran — compatible Mac/Safari/Chrome/Firefox ── */
+async function captureScreen() {
+  const q = QUALITY[currentQuality];
+  const env = detectEnv();
+
+  // Contraintes vidéo de base (toujours supportées)
+  const videoConstraints = {
+    width:  { ideal: q.video.width.ideal,  max: q.video.width.max  },
+    height: { ideal: q.video.height.ideal, max: q.video.height.max },
+    frameRate: { ideal: q.video.frameRate.ideal, max: q.video.frameRate.max },
+    cursor: 'always'
+  };
+
+  // Options avancées Chrome-only (ignorées silencieusement ailleurs)
+  if (env.isChrome) {
+    videoConstraints.displaySurface = 'monitor';
+  }
+
+  const constraints = { video: videoConstraints };
+
+  // Audio : Chrome supporte l'audio système, Firefox/Safari non
+  if (env.isChrome) {
+    constraints.audio = { echoCancellation: false, noiseSuppression: false };
+  }
+
+  return navigator.mediaDevices.getDisplayMedia(constraints);
+}
+
+/* ── Attendre la fin de la collecte ICE ── */
+function waitForICE(pc) {
+  return new Promise((resolve) => {
+    // Déjà terminé (peut arriver si très rapide)
+    if (pc.iceGatheringState === 'complete') { resolve(); return; }
+
+    const onCandidate = e => {
+      updateIceProgress(pc);
+      if (!e.candidate) {
+        // candidate null = fin de collecte
+        pc.removeEventListener('icecandidate', onCandidate);
+        pc.removeEventListener('icegatheringstatechange', onState);
+        resolve();
+      }
+    };
+    const onState = () => {
+      updateIceProgress(pc);
+      if (pc.iceGatheringState === 'complete') {
+        pc.removeEventListener('icecandidate', onCandidate);
+        pc.removeEventListener('icegatheringstatechange', onState);
+        resolve();
+      }
+    };
+    pc.addEventListener('icecandidate', onCandidate);
+    pc.addEventListener('icegatheringstatechange', onState);
+
+    // Fallback timeout 8s pour Mac/réseau lent
+    setTimeout(() => {
+      pc.removeEventListener('icecandidate', onCandidate);
+      pc.removeEventListener('icegatheringstatechange', onState);
+      resolve();
+    }, 8000);
+  });
+}
+
+function updateIceProgress(pc) {
+  const el = document.getElementById('ice-progress-host') || document.getElementById('ice-progress-guest');
+  const hostEl = document.getElementById('ice-progress-host');
+  const guestEl = document.getElementById('ice-progress-guest');
+  const active = (hostEl && hostEl.style.display !== 'none') ? hostEl : (guestEl && guestEl.style.display !== 'none') ? guestEl : null;
+  if (!active) return;
+  const state = pc.iceGatheringState;
+  if (state === 'gathering') {
+    active.textContent = '⏳ Collecte des candidats réseau…';
+    active.style.color = 'var(--yellow)';
+  } else if (state === 'complete') {
+    active.textContent = '✅ Candidats collectés — code prêt';
+    active.style.color = 'var(--green)';
+  }
+}
+
+
+async function createOffer() {
+  makePC();
+  setStatus('yellow','Sélection de l\'écran…');
+  try {
+    localStream = await captureScreen();
+    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+
+    document.getElementById('local-vid').srcObject = localStream;
+    document.getElementById('local-empty').style.display = 'none';
+    document.getElementById('btn-stop').disabled = false;
+    localStream.getVideoTracks()[0].onended = stopShare;
+
+    showLocalInfo();
+
+    setStatus('yellow','Génération de l\'offre…');
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    setStatus('yellow','Collecte réseau en cours… (peut prendre ~5s sur Mac)');
+    showIceProgress('host');
+    await waitForICE(pc);
+
+    const el = document.getElementById('offer-out');
+    el.textContent = btoa(JSON.stringify(pc.localDescription));
+    el.classList.add('has-data');
+    document.getElementById('btn-copy-offer').style.display = 'inline-flex';
+    setStatus('yellow','Offre prête — envoyez le code à votre correspondant');
+  } catch(err) {
+    let msg = err.message;
+    if (err.name === 'NotAllowedError') msg = 'Accès refusé — sur Mac : Réglages système → Confidentialité → Enregistrement d\'écran → cochez votre navigateur';
+    else if (err.name === 'NotFoundError') msg = 'Aucun écran disponible à capturer';
+    else if (err.name === 'NotSupportedError') msg = 'Partage d\'écran non supporté — essayez Chrome ou Firefox';
+    setStatus('red', msg);
+    showError(msg);
+  }
+}
+
+/* ── HOST : recevoir réponse ── */
+async function receiveAnswer() {
+  const raw = document.getElementById('answer-in').value.trim();
+  if (!raw||!pc) { toast('Collez d\'abord le code de réponse'); return; }
+  try {
+    await pc.setRemoteDescription(JSON.parse(atob(raw)));
+    setStatus('yellow','Connexion en cours…');
+  } catch(e) { toast('Code invalide ou mal collé'); }
+}
+
+/* ── GUEST : créer réponse ── */
+async function createAnswer() {
+  const raw = document.getElementById('offer-in').value.trim();
+  if (!raw) { toast('Collez d\'abord le code d\'offre'); return; }
+  makePC();
+  setStatus('yellow','Traitement de l\'offre…');
+  try {
+    await pc.setRemoteDescription(JSON.parse(atob(raw)));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+
+    setStatus('yellow','Collecte réseau en cours… (peut prendre ~5s sur Mac)');
+    showIceProgress('guest');
+    await waitForICE(pc);
+
+    const el = document.getElementById('answer-out');
+    el.textContent = btoa(JSON.stringify(pc.localDescription));
+    el.classList.add('has-data');
+    document.getElementById('btn-copy-answer').style.display = 'inline-flex';
+    setStatus('yellow','Réponse prête — renvoyez le code à l\'hôte');
+  } catch(e) { toast('Offre invalide : '+e.message); }
+}
+
+/* ── Partage (bouton séparé) ── */
+async function startShare() {
+  try {
+    if (localStream) { localStream.getTracks().forEach(t=>t.stop()); }
+    localStream = await captureScreen();
+    document.getElementById('local-vid').srcObject = localStream;
+    document.getElementById('local-empty').style.display = 'none';
+    document.getElementById('btn-stop').disabled = false;
+    localStream.getVideoTracks()[0].onended = stopShare;
+    showLocalInfo();
+    if (pc) {
+      for (const t of localStream.getTracks()) {
+        const s = pc.getSenders().find(x => x.track && x.track.kind === t.kind);
+        if (s) await s.replaceTrack(t); else pc.addTrack(t, localStream);
+      }
+      await applyEncoderParams();
+    }
+  } catch(e) { toast('Partage annulé'); }
+}
+
+function stopShare() {
+  if (localStream) { localStream.getTracks().forEach(t=>t.stop()); localStream = null; }
+  document.getElementById('local-vid').srcObject = null;
+  document.getElementById('local-empty').style.display = 'flex';
+  document.getElementById('local-info').style.display = 'none';
+  document.getElementById('btn-stop').disabled = true;
+  toast('Partage d\'écran arrêté');
+}
+
+function showLocalInfo() {
+  if (!localStream) return;
+  const vt = localStream.getVideoTracks()[0];
+  if (!vt) return;
+  const s = vt.getSettings();
+  const el = document.getElementById('local-info');
+  el.textContent = `${s.width||'?'}×${s.height||'?'} · ${s.frameRate||'?'}fps`;
+  el.style.display = 'block';
+}
+
+/* ── Déconnexion ── */
+function disconnect() {
+  if (pc) { pc.close(); pc = null; }
+  stopShare();
+  document.getElementById('remote-vid').srcObject = null;
+  document.getElementById('remote-empty').style.display = 'flex';
+  document.getElementById('remote-info').style.display = 'none';
+  document.getElementById('btn-disc').disabled = true;
+  clearInterval(statsTimer);
+  ['info-res','info-fps','info-bw','info-loss','info-codec'].forEach(id=>document.getElementById(id).textContent='—');
+  document.getElementById('bw-bar').style.width='0%';
+  lastBytesReceived=0; lastBytesSent=0; lastStatsTime=0;
+  setStatus('','Déconnecté');
+  toast('Session terminée');
+}
+
+/* ── Plein écran ── */
+function goFullscreen() {
+  const v = document.getElementById('remote-vid');
+  const fn = v.requestFullscreen||v.webkitRequestFullscreen||v.mozRequestFullScreen;
+  if (fn) fn.call(v);
+}
+
+function toggleRemoteInfo() {
+  showRemoteInfo = !showRemoteInfo;
+  document.getElementById('remote-info').style.display = showRemoteInfo ? 'block' : 'none';
+}
+
+/* ── Stats temps réel ── */
+function startStats() {
+  clearInterval(statsTimer);
+  lastStatsTime = performance.now();
+  statsTimer = setInterval(async () => {
+    if (!pc) return;
+    const now = performance.now();
+    const dt = (now - lastStatsTime) / 1000;
+    lastStatsTime = now;
+
+    const stats = await pc.getStats();
+    let bitsPerSec = 0;
+
+    stats.forEach(r => {
+      if (r.type === 'inbound-rtp' && r.kind === 'video') {
+        // Résolution & FPS
+        if (r.frameWidth) {
+          const res = r.frameWidth+'×'+r.frameHeight;
+          document.getElementById('info-res').textContent = res;
+          document.getElementById('remote-info').textContent = res+' · '+(Math.round(r.framesPerSecond||0))+'fps';
+        }
+        document.getElementById('info-fps').textContent = Math.round(r.framesPerSecond||0)+' fps';
+
+        // Débit
+        const bytes = r.bytesReceived || 0;
+        if (lastBytesReceived > 0 && dt > 0) {
+          bitsPerSec = ((bytes - lastBytesReceived) * 8) / dt;
+          updateBandwidth(bitsPerSec, 'recv');
+        }
+        lastBytesReceived = bytes;
+
+        // Perte paquets
+        const lost = r.packetsLost || 0;
+        const recv = r.packetsReceived || 1;
+        const lossRate = ((lost / (lost + recv)) * 100).toFixed(1);
+        const lossEl = document.getElementById('info-loss');
+        lossEl.textContent = lossRate + '%';
+        lossEl.className = 'stat-val' + (parseFloat(lossRate) > 2 ? ' warn' : (parseFloat(lossRate) > 5 ? ' err' : ' ok'));
+      }
+
+      if (r.type === 'outbound-rtp' && r.kind === 'video') {
+        const bytes = r.bytesSent || 0;
+        if (lastBytesSent > 0 && dt > 0) {
+          bitsPerSec = ((bytes - lastBytesSent) * 8) / dt;
+          updateBandwidth(bitsPerSec, 'send');
+        }
+        lastBytesSent = bytes;
+      }
+
+      if (r.type === 'codec' && r.mimeType && r.mimeType.startsWith('video')) {
+        document.getElementById('info-codec').textContent = r.mimeType.split('/')[1];
+      }
+    });
+  }, 1500);
+}
+
+function updateBandwidth(bps, dir) {
+  const mbps = bps / 1_000_000;
+  const el = document.getElementById('info-bw');
+  el.textContent = mbps.toFixed(1) + ' Mbps';
+  // Barre de débit (max = maxBitrate de la qualité courante)
+  const max = QUALITY[currentQuality].maxBitrate;
+  const pct = Math.min(100, (bps / max) * 100);
+  const bar = document.getElementById('bw-bar');
+  bar.style.width = pct + '%';
+  bar.style.background = pct < 40 ? '#22c55e' : pct < 75 ? '#f59e0b' : '#ef4444';
+  el.className = 'stat-val' + (pct < 40 ? ' ok' : pct < 75 ? ' warn' : ' err');
+}
+
+function showIceProgress(side) {
+  const id = side === 'host' ? 'ice-progress-host' : 'ice-progress-guest';
+  const el = document.getElementById(id);
+  if (el) { el.style.display = 'block'; }
+}
+
+function showError(msg) {
+  const diagEl = document.getElementById('diag-panel');
+  diagEl.style.display = 'flex';
+  diagEl.innerHTML = `<div class="diag-title">❌ Erreur</div>
+    <div style="font-size:13px;color:var(--red);line-height:1.6">${msg}</div>`;
+  diagEl.scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+/* ── Role ── */
+function switchRole(r) {
+  role = r;
+  document.getElementById('tab-host').classList.toggle('active', r==='host');
+  document.getElementById('tab-guest').classList.toggle('active', r==='guest');
+  document.getElementById('sec-host').classList.toggle('on', r==='host');
+  document.getElementById('sec-guest').classList.toggle('on', r==='guest');
+  document.getElementById('info-role').textContent = r==='host' ? 'Hôte' : 'Invité';
+}
+
+/* ── Helpers ── */
+function setStatus(color, text) {
+  const d = document.getElementById('dot');
+  d.className = 'dot'+(color?' '+color:'');
+  document.getElementById('status-text').textContent = text;
+}
+
+function copyCode(srcId, btnId) {
+  const text = document.getElementById(srcId).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById(btnId);
+    const orig = btn.innerHTML;
+    btn.textContent = '✓ Copié !';
+    setTimeout(()=>{ btn.innerHTML = orig; }, 2000);
+  });
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2500);
+}
+
+switchRole('host');
+checkCompatibility();
+</script>
+</body>
+</html>
